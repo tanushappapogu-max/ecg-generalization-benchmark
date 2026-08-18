@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+*.egg-info/
+
+# Raw ECG data and generated intermediate arrays are local/Drive artifacts.
+data/raw/
+data/processed/
+data/artifacts/
+data/**/*.npy
+data/**/*.npz
+data/**/*.h5
+data/**/*.hdf5
+data/manifests/mimic_labels_*.csv
+data/manifests/mimic_50k*.csv
+data/manifests/mimic_50k*.json
+data/manifests/mimic_50k*.png
+data/manifests/ecg_fm_checkpoint_qc.json
+
+# Local notebook checkpoints and OS metadata.
+.ipynb_checkpoints/
+.DS_Store
