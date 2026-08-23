@@ -24,13 +24,13 @@ No third-party Python packages are required by the download script.
 Run the following command from the repository root:
 
 ```bash
-python3 CODE-15%/datasets/download_code15_zips.py
+python3 code15/download_code15_zips.py
 ```
 
 By default, the ZIP files are saved in the same directory as the script:
 
 ```text
-CODE-15%/datasets/
+code15/
 ├── exams_part0.zip
 ├── exams_part1.zip
 └── exams_part2.zip
@@ -45,7 +45,7 @@ existing archive is skipped only when its checksum and ZIP structure are valid.
 Use `--output-dir` to save the ZIP files elsewhere:
 
 ```bash
-python3 CODE-15%/datasets/download_code15_zips.py \
+python3 code15/download_code15_zips.py \
   --output-dir /path/to/code15-downloads
 ```
 
@@ -55,7 +55,7 @@ Run the same command again. The script uses `curl` resume support and retains
 an incomplete archive so the next run can continue it instead of restarting.
 
 ```bash
-python3 CODE-15%/datasets/download_code15_zips.py
+python3 code15/download_code15_zips.py
 ```
 
 After all three files pass checksum and ZIP validation, the script prints:
@@ -65,4 +65,3 @@ All requested archives are downloaded and verified.
 ```
 
 Dataset source: [CODE-15% on Zenodo](https://zenodo.org/records/4916206)
-
