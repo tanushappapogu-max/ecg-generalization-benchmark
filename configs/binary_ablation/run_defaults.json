@@ -1,0 +1,28 @@
+{
+  "definition_version": "normal-vs-any-benchmark-abnormal-v1",
+  "normal_rule": "normal=1 and no abnormal benchmark label",
+  "abnormal_rule": "OR(af_afl, av_block_1, lbbb, rbbb)",
+  "normal_plus_abnormal_rule": "abnormal wins",
+  "all_zero_rule": "excluded",
+  "architectures": [
+    "ecg_fm",
+    "inception_time"
+  ],
+  "seed": 42,
+  "epochs": 50,
+  "patience": 10,
+  "ecg_fm": {
+    "batch_size": 4,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 1e-6,
+    "weight_decay": 0.0001
+  },
+  "inception_time": {
+    "batch_size": 8,
+    "gradient_accumulation_steps": 4,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "module_channels": 32,
+    "depth": 6
+  }
+}

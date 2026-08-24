@@ -10,6 +10,10 @@ __pycache__/
 data/raw/
 data/processed/
 data/artifacts/
+data/checkpoints/
+data/week2/runs/
+data/week3/runs/
+data/week3/results/
 data/**/*.npy
 data/**/*.npz
 data/**/*.h5

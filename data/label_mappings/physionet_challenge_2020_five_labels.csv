@@ -1,0 +1,7 @@
+source_code,source_name,target_label,mapping_version
+426783006,Sinus rhythm,normal,physionet-challenge-2020-v1
+164889003,Atrial fibrillation,af_afl,physionet-challenge-2020-v1
+164890007,Atrial flutter,af_afl,physionet-challenge-2020-v1
+270492004,First-degree atrioventricular block,av_block_1,physionet-challenge-2020-v1
+164909002,Left bundle branch block,lbbb,physionet-challenge-2020-v1
+59118001,Right bundle branch block,rbbb,physionet-challenge-2020-v1

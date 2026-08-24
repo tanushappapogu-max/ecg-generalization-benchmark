@@ -1,0 +1,7 @@
+source_label,target_label,aggregation,mapping_version,notes
+Sinus rhythm,normal,OR,ecg-fm-machine-report-v1,"Frozen team decision: count the ECG-FM machine-report label Sinus rhythm as the benchmark Normal class"
+Atrial fibrillation,af_afl,OR,ecg-fm-machine-report-v1,
+Atrial flutter,af_afl,OR,ecg-fm-machine-report-v1,
+1st degree atrioventricular block,av_block_1,OR,ecg-fm-machine-report-v1,
+Left bundle branch block,lbbb,OR,ecg-fm-machine-report-v1,
+Right bundle branch block,rbbb,OR,ecg-fm-machine-report-v1,

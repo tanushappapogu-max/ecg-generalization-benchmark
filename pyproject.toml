@@ -15,6 +15,12 @@ dependencies = [
 [project.optional-dependencies]
 parquet = ["pyarrow>=15"]
 test = ["pytest>=8"]
+train = [
+    "huggingface-hub>=0.24",
+    "scikit-learn>=1.4",
+    "torch>=2.2",
+    "wfdb>=4.1",
+]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

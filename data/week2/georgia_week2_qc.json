@@ -1,0 +1,64 @@
+{
+  "dataset": "georgia",
+  "record_count": 10344,
+  "subject_count": 10344,
+  "split_counts": {
+    "test": 1034,
+    "train": 8275,
+    "validation": 1035
+  },
+  "patient_leakage_count": 0,
+  "label_positive_counts": {
+    "train": {
+      "normal": 1402,
+      "af_afl": 593,
+      "av_block_1": 615,
+      "lbbb": 185,
+      "rbbb": 434
+    },
+    "validation": {
+      "normal": 175,
+      "af_afl": 74,
+      "av_block_1": 77,
+      "lbbb": 23,
+      "rbbb": 54
+    },
+    "test": {
+      "normal": 175,
+      "af_afl": 74,
+      "av_block_1": 77,
+      "lbbb": 23,
+      "rbbb": 54
+    }
+  },
+  "label_prevalence": {
+    "train": {
+      "normal": 0.16942598187311178,
+      "af_afl": 0.07166163141993957,
+      "av_block_1": 0.0743202416918429,
+      "lbbb": 0.022356495468277945,
+      "rbbb": 0.05244712990936556
+    },
+    "validation": {
+      "normal": 0.16908212560386474,
+      "af_afl": 0.07149758454106281,
+      "av_block_1": 0.07439613526570048,
+      "lbbb": 0.022222222222222223,
+      "rbbb": 0.05217391304347826
+    },
+    "test": {
+      "normal": 0.16924564796905223,
+      "af_afl": 0.07156673114119923,
+      "av_block_1": 0.07446808510638298,
+      "lbbb": 0.022243713733075435,
+      "rbbb": 0.05222437137330754
+    }
+  },
+  "mapping_version": [
+    "physionet-challenge-2020-v1"
+  ],
+  "split_version": [
+    "record-level-multilabel-80-10-10-seed42"
+  ],
+  "status": "PASS"
+}

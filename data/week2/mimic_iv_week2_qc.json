@@ -1,0 +1,64 @@
+{
+  "dataset": "mimic_iv",
+  "record_count": 50000,
+  "subject_count": 22035,
+  "split_counts": {
+    "test": 5000,
+    "train": 40000,
+    "validation": 5000
+  },
+  "patient_leakage_count": 0,
+  "label_positive_counts": {
+    "train": {
+      "normal": 32379,
+      "af_afl": 4759,
+      "av_block_1": 2947,
+      "lbbb": 1485,
+      "rbbb": 3296
+    },
+    "validation": {
+      "normal": 4048,
+      "af_afl": 595,
+      "av_block_1": 369,
+      "lbbb": 186,
+      "rbbb": 412
+    },
+    "test": {
+      "normal": 4047,
+      "af_afl": 595,
+      "av_block_1": 368,
+      "lbbb": 185,
+      "rbbb": 412
+    }
+  },
+  "label_prevalence": {
+    "train": {
+      "normal": 0.809475,
+      "af_afl": 0.118975,
+      "av_block_1": 0.073675,
+      "lbbb": 0.037125,
+      "rbbb": 0.0824
+    },
+    "validation": {
+      "normal": 0.8096,
+      "af_afl": 0.119,
+      "av_block_1": 0.0738,
+      "lbbb": 0.0372,
+      "rbbb": 0.0824
+    },
+    "test": {
+      "normal": 0.8094,
+      "af_afl": 0.119,
+      "av_block_1": 0.0736,
+      "lbbb": 0.037,
+      "rbbb": 0.0824
+    }
+  },
+  "mapping_version": [
+    "ecg-fm-machine-report-v1"
+  ],
+  "split_version": [
+    "mimic-50k-v3-patient-aware-80-10-10-seed42"
+  ],
+  "status": "PASS"
+}
