@@ -1,0 +1,6 @@
+dataset,age_0_44_count,age_45_74_count,age_75_plus_count,age_unknown_count,sex_female_count,sex_male_count,sex_unknown_count,sampling_rate_hz,hardware_group,hardware_documented,label_schema,metadata_basis,metadata_source_url
+PTB-XL,3948,13262,4298,293,11356,10445,0,500,Schiller devices,1,SCP-ECG,record-level PTB-XL v1.0.2 metadata,https://physionet.org/files/ptb-xl/1.0.2/ptbxl_database.csv
+MIMIC-IV-ECG,106386,445507,243652,4489,389334,406211,4489,500,multi-vendor hospital ECG hardware (models undisclosed),0,machine-report text,published full-cohort aggregate over 800034 ECGs; not the 50000-record benchmark manifest,https://www.nature.com/articles/s41746-025-02074-3#Tab1
+CPSC2018,1409,3638,1821,9,3178,3699,0,500,not documented,0,CPSC custom 9-class,record-level PhysioNet Challenge 2020 WFDB headers,https://physionet.org/files/challenge-2020/1.0.2/training/cpsc_2018/
+Georgia 12-Lead,1668,6677,1922,77,4793,5551,0,500,not documented,0,SNOMED-CT,record-level PhysioNet Challenge 2020 WFDB headers,https://physionet.org/content/challenge-2020/1.0.2/
+CODE-15%,123385,159486,62908,0,206576,139203,0,400,TEB ECGPCor or Micromed ErgoPC 13,1,CODE custom binary labels,record-level CODE-15% exams.csv metadata,https://zenodo.org/records/4916206/files/exams.csv?download=1
