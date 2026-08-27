@@ -14,6 +14,35 @@ PAIR_COLUMNS = ("source_dataset", "target_dataset")
 SHIFT_COLUMNS = ("PS", "DS", "LS")
 
 
+DATASET_ALIASES = {
+    "ptbxl": "ptbxl",
+    "mimicivecg": "mimic_iv",
+    "mimiciv": "mimic_iv",
+    "cpsc2018": "cpsc2018",
+    "georgia12lead": "georgia",
+    "georgia": "georgia",
+    "code15": "code_ii",
+    "codeii": "code_ii",
+}
+
+
+def canonical_dataset_name(value: object) -> str:
+    """Normalize the display names used by the metadata table to run IDs."""
+
+    compact = "".join(character for character in str(value).lower() if character.isalnum())
+    return DATASET_ALIASES.get(compact, str(value).strip())
+
+
+def canonicalize_pair_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy whose source/target names use the benchmark run IDs."""
+
+    result = frame.copy()
+    for column in PAIR_COLUMNS:
+        if column in result:
+            result[column] = result[column].map(canonical_dataset_name)
+    return result
+
+
 def compute_composite_score(
     matrix_rows: pd.DataFrame,
     shift_rows: pd.DataFrame,
@@ -38,12 +67,12 @@ def compute_composite_score(
         raise ValueError(f"Matrix is missing columns: {missing}")
     if missing := sorted(required_shifts - set(shift_rows.columns)):
         raise ValueError(f"Shift table is missing columns: {missing}")
-    matrix = matrix_rows.copy()
+    matrix = canonicalize_pair_columns(matrix_rows)
     if "status" in matrix:
         matrix = matrix.loc[matrix["status"].eq("COMPLETE")].copy()
     if matrix.duplicated(list(PAIR_COLUMNS)).any():
         raise ValueError("Matrix contains duplicate source-target cells")
-    shifts = shift_rows.copy()
+    shifts = canonicalize_pair_columns(shift_rows)
     if shifts.duplicated(list(PAIR_COLUMNS)).any():
         raise ValueError("Shift table contains duplicate source-target rows")
     for column in SHIFT_COLUMNS:
@@ -120,4 +149,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -37,3 +37,25 @@ def test_composite_score_requires_complete_shift_vectors():
     with pytest.raises(ValueError, match="shift vector"):
         compute_composite_score(matrix, shifts)
 
+
+def test_composite_score_normalizes_metadata_display_names():
+    matrix = pd.DataFrame(
+        [
+            {"source_dataset": "ptbxl", "target_dataset": "ptbxl", "macro_auroc": 0.9},
+            {"source_dataset": "ptbxl", "target_dataset": "mimic_iv", "macro_auroc": 0.7},
+        ]
+    )
+    shifts = pd.DataFrame(
+        [
+            {
+                "source_dataset": "PTB-XL",
+                "target_dataset": "MIMIC-IV-ECG",
+                "PS": 0,
+                "DS": 0,
+                "LS": 1,
+            }
+        ]
+    )
+    score, components = compute_composite_score(matrix, shifts)
+    assert score == pytest.approx(0.7 * (1 - 0.2 / 4))
+    assert components[["PS", "DS", "LS"]].iloc[0].tolist() == [0, 0, 1]

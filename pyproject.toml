@@ -18,6 +18,7 @@ test = ["pytest>=8"]
 train = [
     "huggingface-hub>=0.24",
     "scikit-learn>=1.4",
+    "scipy>=1.11",
     "torch>=2.2",
     "wfdb>=4.1",
 ]
