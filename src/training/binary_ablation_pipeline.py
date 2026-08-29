@@ -16,6 +16,7 @@ import json
 import math
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -344,8 +345,67 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
     stale_epochs = 0
     history: list[dict[str, Any]] = []
     best_path = args.output_dir / "best_checkpoint.pt"
+    last_path = args.output_dir / "last_checkpoint.pt"
+    start_epoch = 0
+    resume_signature = {
+        "architecture": args.architecture,
+        "dataset": source_dataset,
+        "task": "normal_vs_abnormal",
+        "seed": args.seed,
+        "smoke_test": bool(args.smoke_test),
+    }
+    if args.resume and last_path.is_file():
+        state = torch.load(last_path, map_location=device, weights_only=False)
+        if state.get("resume_signature") != resume_signature:
+            raise RuntimeError(
+                f"Refusing incompatible resume checkpoint: {last_path}. "
+                "Use a new output directory or remove the stale checkpoint."
+            )
+        model.load_state_dict(state["model_state_dict"])
+        optimizer.load_state_dict(state["optimizer_state_dict"])
+        if state.get("scaler_state_dict"):
+            scaler.load_state_dict(state["scaler_state_dict"])
+        best_score = float(state["best_score"])
+        stale_epochs = int(state["stale_epochs"])
+        history = list(state.get("history", []))
+        start_epoch = int(state["epoch"]) + 1
+        print(
+            json.dumps(
+                {"event": "RESUMED", "checkpoint": str(last_path), "next_epoch": start_epoch}
+            ),
+            flush=True,
+        )
+    elif args.resume and best_path.is_file():
+        state = torch.load(best_path, map_location=device, weights_only=False)
+        if state.get("architecture") != args.architecture or state.get("source_dataset") != source_dataset:
+            raise RuntimeError(f"Refusing incompatible best checkpoint: {best_path}")
+        model.load_state_dict(state["model_state_dict"])
+        if state.get("optimizer_state_dict"):
+            optimizer.load_state_dict(state["optimizer_state_dict"])
+        saved_score = float(state.get("validation_auroc", math.nan))
+        best_score = saved_score if math.isfinite(saved_score) else -math.inf
+        history_path = args.output_dir / "training_history.csv"
+        best_epoch = int(state.get("epoch", -1))
+        history = (
+            pd.read_csv(history_path).to_dict("records")
+            if history_path.is_file()
+            else []
+        )
+        history = [row for row in history if int(row["epoch"]) <= best_epoch]
+        start_epoch = best_epoch + 1
+        print(
+            json.dumps(
+                {
+                    "event": "RESUMED_FROM_LEGACY_BEST",
+                    "checkpoint": str(best_path),
+                    "next_epoch": start_epoch,
+                }
+            ),
+            flush=True,
+        )
     max_batches = 1 if args.smoke_test else None
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
+        epoch_started = time.monotonic()
         model.train()
         optimizer.zero_grad(set_to_none=True)
         total_loss = 0.0
@@ -370,6 +430,19 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
                 optimizer.zero_grad(set_to_none=True)
             total_loss += float(raw_loss.item()) * len(target)
             total_records += len(target)
+            if args.progress_every > 0 and (batch_index + 1) % args.progress_every == 0:
+                print(
+                    json.dumps(
+                        {
+                            "event": "TRAIN_PROGRESS",
+                            "epoch": epoch,
+                            "batch": batch_index + 1,
+                            "batches": len(train_loader),
+                            "elapsed_seconds": round(time.monotonic() - epoch_started, 1),
+                        }
+                    ),
+                    flush=True,
+                )
             if max_batches is not None and batch_index + 1 >= max_batches:
                 break
         validation = evaluate_binary(
@@ -411,7 +484,23 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
             }
         )
         pd.DataFrame(history).to_csv(args.output_dir / "training_history.csv", index=False)
-        print(json.dumps(history[-1], allow_nan=True))
+        _atomic_torch_save(
+            {
+                "resume_signature": resume_signature,
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scaler_state_dict": scaler.state_dict(),
+                "best_score": best_score,
+                "stale_epochs": stale_epochs,
+                "history": history,
+            },
+            last_path,
+        )
+        print(
+            json.dumps({**history[-1], "checkpoint": str(last_path)}, allow_nan=True),
+            flush=True,
+        )
         if stale_epochs >= args.patience:
             break
 
@@ -517,6 +606,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--max-records-per-split", type=int)
     parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--progress-every", type=int, default=100)
     parser.add_argument(
         "--mixed-precision", action=argparse.BooleanOptionalAction, default=True
     )
@@ -525,6 +616,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.progress_every < 0:
+        raise ValueError("progress-every cannot be negative")
     result = (
         run_evaluation(args) if args.evaluate_checkpoint else run_training(args)
     )

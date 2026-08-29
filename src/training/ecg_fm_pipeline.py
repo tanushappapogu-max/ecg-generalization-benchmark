@@ -16,6 +16,7 @@ import math
 import os
 import random
 import tempfile
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -471,14 +472,73 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
     _write_json(args.output_dir / "run_config.json", run_metadata)
 
     best_path = args.output_dir / "best_checkpoint.pt"
+    last_path = args.output_dir / "last_checkpoint.pt"
     history_path = args.output_dir / "training_history.csv"
     history: list[dict[str, Any]] = []
     best_score = -math.inf
     epochs_without_improvement = 0
+    start_epoch = 0
+    resume_signature = {
+        "architecture": "ecg_fm",
+        "dataset": dataset_name,
+        "task": "five_label",
+        "seed": args.seed,
+        "freeze_feature_extractor": bool(args.freeze_feature_extractor),
+        "smoke_test": bool(args.smoke_test),
+    }
+    if args.resume and last_path.is_file():
+        state = torch.load(last_path, map_location=device, weights_only=False)
+        if state.get("resume_signature") != resume_signature:
+            raise RuntimeError(
+                f"Refusing incompatible resume checkpoint: {last_path}. "
+                "Use a new output directory or remove the stale checkpoint."
+            )
+        model.load_state_dict(state["model_state_dict"])
+        optimizer.load_state_dict(state["optimizer_state_dict"])
+        if state.get("scaler_state_dict"):
+            scaler.load_state_dict(state["scaler_state_dict"])
+        best_score = float(state["best_score"])
+        epochs_without_improvement = int(state["stale_epochs"])
+        history = list(state.get("history", []))
+        start_epoch = int(state["epoch"]) + 1
+        print(
+            json.dumps(
+                {"event": "RESUMED", "checkpoint": str(last_path), "next_epoch": start_epoch}
+            ),
+            flush=True,
+        )
+    elif args.resume and best_path.is_file():
+        state = torch.load(best_path, map_location=device, weights_only=False)
+        if state.get("dataset") != dataset_name:
+            raise RuntimeError(f"Refusing incompatible best checkpoint: {best_path}")
+        model.load_state_dict(state["model_state_dict"])
+        if state.get("optimizer_state_dict"):
+            optimizer.load_state_dict(state["optimizer_state_dict"])
+        saved_score = float(state.get("validation_macro_auroc", math.nan))
+        best_score = saved_score if math.isfinite(saved_score) else -math.inf
+        best_epoch = int(state.get("epoch", -1))
+        history = (
+            pd.read_csv(history_path).to_dict("records")
+            if history_path.is_file()
+            else []
+        )
+        history = [row for row in history if int(row["epoch"]) <= best_epoch]
+        start_epoch = best_epoch + 1
+        print(
+            json.dumps(
+                {
+                    "event": "RESUMED_FROM_LEGACY_BEST",
+                    "checkpoint": str(best_path),
+                    "next_epoch": start_epoch,
+                }
+            ),
+            flush=True,
+        )
     max_train_batches = 1 if args.smoke_test else None
     max_eval_batches = 1 if args.smoke_test else None
 
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
+        epoch_started = time.monotonic()
         model.train()
         optimizer.zero_grad(set_to_none=True)
         running_loss = 0.0
@@ -507,6 +567,19 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
             count = len(target)
             running_loss += float(unscaled_loss.item()) * count
             seen += count
+            if args.progress_every > 0 and (batch_index + 1) % args.progress_every == 0:
+                print(
+                    json.dumps(
+                        {
+                            "event": "TRAIN_PROGRESS",
+                            "epoch": epoch,
+                            "batch": batch_index + 1,
+                            "batches": len(train_loader),
+                            "elapsed_seconds": round(time.monotonic() - epoch_started, 1),
+                        }
+                    ),
+                    flush=True,
+                )
             if max_train_batches is not None and batch_index + 1 >= max_train_batches:
                 break
 
@@ -553,7 +626,20 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
         }
         history.append(row)
         pd.DataFrame(history).to_csv(history_path, index=False)
-        print(json.dumps(row, allow_nan=True))
+        _atomic_torch_save(
+            {
+                "resume_signature": resume_signature,
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scaler_state_dict": scaler.state_dict(),
+                "best_score": best_score,
+                "stale_epochs": epochs_without_improvement,
+                "history": history,
+            },
+            last_path,
+        )
+        print(json.dumps({**row, "checkpoint": str(last_path)}, allow_nan=True), flush=True)
         if epochs_without_improvement >= args.patience:
             break
 
@@ -613,6 +699,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--mixed-precision", action=argparse.BooleanOptionalAction, default=True
     )
     parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--progress-every", type=int, default=100)
     parser.add_argument("--data-only", action="store_true")
     parser.add_argument("--max-records-per-split", type=int)
     return parser
@@ -626,6 +714,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError("batch size and gradient accumulation must be positive")
     if args.num_workers < 0:
         raise ValueError("num_workers cannot be negative")
+    if args.progress_every < 0:
+        raise ValueError("progress-every cannot be negative")
     if not args.data_only and args.pretrained_checkpoint is None:
         raise ValueError("--pretrained-checkpoint is required unless --data-only is used")
     args.output_dir.mkdir(parents=True, exist_ok=True)
