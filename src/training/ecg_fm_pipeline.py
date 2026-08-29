@@ -98,6 +98,9 @@ class ECGManifestDataset(Dataset[dict[str, Any]]):
             raise ValueError(f"Manifest contains no {split!r} records")
         self.rows = selected.reset_index(drop=True)
         self.signal_root = signal_root.expanduser().resolve()
+        self._hdf5_pid: int | None = None
+        self._hdf5_handles: dict[Path, Any] = {}
+        self._hdf5_indices: dict[Path, dict[int, int]] = {}
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -125,6 +128,62 @@ class ECGManifestDataset(Dataset[dict[str, Any]]):
             source_units=list(record.units or []),
         )
 
+    def _reset_hdf5_cache_for_process(self) -> None:
+        process_id = os.getpid()
+        if self._hdf5_pid == process_id:
+            return
+        for handle in self._hdf5_handles.values():
+            try:
+                handle.close()
+            except Exception:
+                pass
+        self._hdf5_pid = process_id
+        self._hdf5_handles = {}
+        self._hdf5_indices = {}
+
+    def _load_hdf5(self, row: pd.Series) -> np.ndarray:
+        import h5py
+
+        encoded = str(row["signal_path"])
+        if "::" not in encoded:
+            raise ValueError(f"HDF5 signal_path must be FILE::EXAM_ID, got {encoded!r}")
+        file_name, exam_text = encoded.rsplit("::", 1)
+        relative = Path(file_name)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"Unsafe HDF5 signal path: {relative}")
+        path = (self.signal_root / relative).resolve()
+        if path != self.signal_root and self.signal_root not in path.parents:
+            raise ValueError(f"HDF5 path escapes signal root: {relative}")
+        if not path.is_file():
+            raise FileNotFoundError(path)
+
+        self._reset_hdf5_cache_for_process()
+        if path not in self._hdf5_handles:
+            handle = h5py.File(path, "r")
+            id_key = next((key for key in ("exam_id", "id_exam") if key in handle), None)
+            signal_key = next((key for key in ("tracings", "signal") if key in handle), None)
+            if id_key is None or signal_key is None:
+                handle.close()
+                raise ValueError(
+                    f"{path} must contain exam_id/id_exam and tracings/signal datasets"
+                )
+            ids = np.asarray(handle[id_key]).astype(np.int64).reshape(-1)
+            self._hdf5_handles[path] = handle
+            self._hdf5_indices[path] = {int(exam_id): index for index, exam_id in enumerate(ids)}
+        handle = self._hdf5_handles[path]
+        lookup = self._hdf5_indices[path]
+        exam_id = int(exam_text)
+        if exam_id not in lookup:
+            raise KeyError(f"Exam {exam_id} is absent from {path}")
+        signal_key = "tracings" if "tracings" in handle else "signal"
+        tracing = np.asarray(handle[signal_key][lookup[exam_id]], dtype=np.float32)
+        return standardize_signal(
+            tracing,
+            source_sample_rate_hz=400.0,
+            source_leads=("I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"),
+            source_units="mV",
+        )
+
     def __getitem__(self, index: int) -> dict[str, Any]:
         row = self.rows.iloc[index]
         storage = str(row["storage"])
@@ -132,6 +191,8 @@ class ECGManifestDataset(Dataset[dict[str, Any]]):
             signal = self._load_npy(row)
         elif storage == "wfdb":
             signal = self._load_wfdb(row)
+        elif storage == "hdf5":
+            signal = self._load_hdf5(row)
         else:
             raise ValueError(f"Unsupported storage type: {storage!r}")
 

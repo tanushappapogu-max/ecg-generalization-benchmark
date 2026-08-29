@@ -16,6 +16,7 @@ dependencies = [
 parquet = ["pyarrow>=15"]
 test = ["pytest>=8"]
 train = [
+    "h5py>=3.10",
     "huggingface-hub>=0.24",
     "scikit-learn>=1.4",
     "scipy>=1.11",
