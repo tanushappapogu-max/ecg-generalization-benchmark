@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evaluate the frozen two-class ablation without inventing missing cells.
 
-The runner supports both ECG-FM and InceptionTime checkpoints. It evaluates
+The runner supports all four benchmark architectures. It evaluates
 every available source checkpoint on every available target test set, emits a
 complete source-by-target audit, and measures how much of the five-class
 in-domain versus cross-dataset AUROC gap disappears after collapsing the task
@@ -23,7 +23,11 @@ from torch import nn
 try:
     from src.data.binary_ablation import BINARY_DEFINITION_VERSION, build_binary_manifest
     from src.evaluation.ecg_fm_matrix import DEFAULT_DATASETS, parse_named_paths
-    from src.training.binary_ablation_pipeline import build_model, evaluate_binary
+    from src.training.binary_ablation_pipeline import (
+        BINARY_IMPLEMENTATION_VERSION,
+        build_model,
+        evaluate_binary,
+    )
     from src.training.ecg_fm_pipeline import ECGManifestDataset, _loader, seed_everything
 except ModuleNotFoundError:
     import sys
@@ -31,11 +35,15 @@ except ModuleNotFoundError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from src.data.binary_ablation import BINARY_DEFINITION_VERSION, build_binary_manifest
     from src.evaluation.ecg_fm_matrix import DEFAULT_DATASETS, parse_named_paths
-    from src.training.binary_ablation_pipeline import build_model, evaluate_binary
+    from src.training.binary_ablation_pipeline import (
+        BINARY_IMPLEMENTATION_VERSION,
+        build_model,
+        evaluate_binary,
+    )
     from src.training.ecg_fm_pipeline import ECGManifestDataset, _loader, seed_everything
 
 
-DEFAULT_ARCHITECTURES = ("ecg_fm", "inception_time")
+DEFAULT_ARCHITECTURES = ("ecg_fm", "inception_time", "resnet1d", "transformer")
 
 
 def generalization_gap(rows: pd.DataFrame, metric: str) -> dict[str, float | int]:
@@ -166,6 +174,15 @@ def run_matrix(args: argparse.Namespace) -> pd.DataFrame:
                     f"Checkpoint metadata mismatch in {checkpoint_path}: "
                     f"{checkpoint_architecture}/{checkpoint_source}"
                 )
+            checkpoint_implementation = str(
+                checkpoint.get("binary_implementation_version", "")
+            )
+            if checkpoint_implementation != BINARY_IMPLEMENTATION_VERSION:
+                raise ValueError(
+                    f"Checkpoint {checkpoint_path} uses binary implementation "
+                    f"{checkpoint_implementation!r}; expected "
+                    f"{BINARY_IMPLEMENTATION_VERSION!r}"
+                )
             config = checkpoint.get("run_config", {})
             model, _ = build_model(
                 architecture,
@@ -174,6 +191,15 @@ def run_matrix(args: argparse.Namespace) -> pd.DataFrame:
                 dropout=float(config.get("dropout", 0.0)),
                 inception_channels=int(config.get("inception_channels", 32)),
                 inception_depth=int(config.get("inception_depth", 6)),
+                resnet_base_channels=int(config.get("resnet_base_channels", 32)),
+                resnet_blocks=tuple(config.get("resnet_blocks", (2, 2, 2, 2))),
+                transformer_patch_size=int(config.get("transformer_patch_size", 50)),
+                transformer_embed_dim=int(config.get("transformer_embed_dim", 128)),
+                transformer_heads=int(config.get("transformer_heads", 4)),
+                transformer_layers=int(config.get("transformer_layers", 4)),
+                transformer_feedforward_dim=int(
+                    config.get("transformer_feedforward_dim", 256)
+                ),
             )
             model.load_state_dict(checkpoint["model_state_dict"])
 
@@ -254,8 +280,15 @@ def run_matrix(args: argparse.Namespace) -> pd.DataFrame:
         if five_path and five_path.is_file():
             five_rows = pd.read_csv(five_path)
             if "architecture" in five_rows:
+                normalized_architecture = (
+                    five_rows["architecture"]
+                    .astype(str)
+                    .str.lower()
+                    .str.replace(r"[^a-z0-9]+", "_", regex=True)
+                    .str.strip("_")
+                )
                 five_rows = five_rows.loc[
-                    five_rows["architecture"].astype(str).str.lower().eq(architecture)
+                    normalized_architecture.eq(architecture)
                 ]
             five_summary = generalization_gap(five_rows, "macro_auroc")
             row.update({f"five_label_{key}": value for key, value in five_summary.items()})

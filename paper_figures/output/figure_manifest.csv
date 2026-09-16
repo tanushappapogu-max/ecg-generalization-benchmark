@@ -1,0 +1,12 @@
+figure,stem,recommended_placement,purpose,formats
+fig1,five_class_auroc_heatmaps,Main,Shared-scale 5×5 macro-AUROC heatmaps,PDF; SVG; PNG (350 dpi)
+fig2,generalization_summary,Main,In-distribution versus cross-dataset performance and gap distributions,PDF; SVG; PNG (350 dpi)
+fig3,target_dataset_difficulty,Main,Target difficulty across architectures,PDF; SVG; PNG (350 dpi)
+fig4,per_class_cross_dataset_auroc,Main/Supplement,Per-class cross-dataset AUROC with SEM,PDF; SVG; PNG (350 dpi)
+fig5,mean_directional_gap_heatmap,Main,Average directional generalization-gap matrix,PDF; SVG; PNG (350 dpi)
+fig6,shift_vector_analysis,Main,Shift-vector gaps and descriptive weighted allocation,PDF; SVG; PNG (350 dpi)
+fig7,two_class_ablation,Main after second architecture,Five-class versus binary gap,PDF; SVG; PNG (350 dpi)
+fig8,bootstrap_ci_widths,Supplement,Bootstrap uncertainty by target dataset,PDF; SVG; PNG (350 dpi)
+fig9,directional_asymmetry,Supplement,A→B versus B→A transfer asymmetry,PDF; SVG; PNG (350 dpi)
+fig10,model_tradeoff,Main,In-distribution versus cross-dataset tradeoff,PDF; SVG; PNG (350 dpi)
+table1,model_performance_summary,Main,Model performance mean ± SD,PDF; SVG; PNG (350 dpi)

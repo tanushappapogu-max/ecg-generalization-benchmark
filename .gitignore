@@ -27,3 +27,17 @@ data/manifests/ecg_fm_checkpoint_qc.json
 # Local notebook checkpoints and OS metadata.
 .ipynb_checkpoints/
 .DS_Store
+
+# Local rendering, inspection, and package-build artifacts.
+.tmp-*/
+tmp/
+**/node_modules/
+*.inspect.ndjson
+
+# Rebuildable caches and packaged submission copies.
+paper_submission/__pycache__/
+paper_submission/*.zip
+paper_submission/WMHS_OVERLEAF_READY*/
+paper_submission/ECG_WMHS_OVERLEAF/
+paper_submission/main_verbatim.tex
+deliverables/*/

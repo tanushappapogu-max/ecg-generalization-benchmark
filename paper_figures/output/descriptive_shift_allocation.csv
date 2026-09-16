@@ -1,0 +1,10 @@
+architecture,shift_type,allocated_gap_share
+ecg_fm,PS,0.040027706812214216
+ecg_fm,DS,0.10385090604909877
+ecg_fm,LS,0.856121387138687
+inception_time,PS,0.030152856108909352
+inception_time,DS,0.113987648389433
+inception_time,LS,0.8558594955016576
+transformer,PS,0.027796486189924606
+transformer,DS,0.1154138886439012
+transformer,LS,0.8567896251661743

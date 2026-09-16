@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Train or evaluate the frozen normal-versus-abnormal Week 3 ablation.
+"""Train or evaluate the frozen normal-versus-abnormal ablation.
 
-Two architectures are supported: ECG-FM and InceptionTime.  The binary label
-rule is centralized in :mod:`src.data.binary_ablation`; this command never
-changes a source split.  With ``--evaluate-checkpoint`` it evaluates one source
-checkpoint on one target test split, which is the primitive used to build the
-cross-dataset matrix.
+All four benchmark architectures are supported.  The binary label rule is
+centralized in :mod:`src.data.binary_ablation`; this command never changes a
+source split.  The from-scratch architectures are constructed by the same
+builder used for the five-label experiment so the ablation changes only the
+labels, output dimension, and loss.  With ``--evaluate-checkpoint`` this command
+evaluates one source checkpoint on one target test split, which is the
+primitive used to build the cross-dataset matrix.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ try:
     from src.data.week2_manifest import LABEL_COLUMNS
     from src.models.ecg_fm import ECGFMClassifier, describe_parameter_policy
     from src.models.inception_time import InceptionTime1D
+    from src.training.baseline_pipeline import build_baseline_model
     from src.training.ecg_fm_pipeline import ECGManifestDataset, _loader, seed_everything
 except ModuleNotFoundError:
     import sys
@@ -50,10 +53,12 @@ except ModuleNotFoundError:
     from src.data.week2_manifest import LABEL_COLUMNS
     from src.models.ecg_fm import ECGFMClassifier, describe_parameter_policy
     from src.models.inception_time import InceptionTime1D
+    from src.training.baseline_pipeline import build_baseline_model
     from src.training.ecg_fm_pipeline import ECGManifestDataset, _loader, seed_everything
 
 
-ARCHITECTURES = ("ecg_fm", "inception_time")
+ARCHITECTURES = ("ecg_fm", "inception_time", "resnet1d", "transformer")
+BINARY_IMPLEMENTATION_VERSION = "binary-four-architectures-v2-recording-adapter"
 
 
 class InceptionWindowAdapter(nn.Module):
@@ -134,6 +139,13 @@ def build_model(
     dropout: float,
     inception_channels: int,
     inception_depth: int,
+    resnet_base_channels: int = 32,
+    resnet_blocks: Sequence[int] = (2, 2, 2, 2),
+    transformer_patch_size: int = 50,
+    transformer_embed_dim: int = 128,
+    transformer_heads: int = 4,
+    transformer_layers: int = 4,
+    transformer_feedforward_dim: int = 256,
 ) -> tuple[nn.Module, dict[str, Any]]:
     if architecture == "ecg_fm":
         if pretrained_checkpoint is None:
@@ -146,21 +158,24 @@ def build_model(
         model = ECGFMClassifier(encoder, num_labels=1, dropout=dropout)
         policy = describe_parameter_policy(model)
         policy["classification_head"] = "one-logit abnormal head"
-    elif architecture == "inception_time":
-        base = InceptionTime1D(
+    elif architecture in {"inception_time", "resnet1d", "transformer"}:
+        model, policy = build_baseline_model(
+            architecture,
+            model_config={
+                "dropout": dropout,
+                "inception_channels": inception_channels,
+                "inception_depth": inception_depth,
+                "resnet_base_channels": resnet_base_channels,
+                "resnet_blocks": list(resnet_blocks),
+                "transformer_patch_size": transformer_patch_size,
+                "transformer_embed_dim": transformer_embed_dim,
+                "transformer_heads": transformer_heads,
+                "transformer_layers": transformer_layers,
+                "transformer_feedforward_dim": transformer_feedforward_dim,
+            },
             num_outputs=1,
-            module_channels=inception_channels,
-            depth=inception_depth,
-            dropout=dropout,
         )
-        model = InceptionWindowAdapter(base)
-        total = sum(parameter.numel() for parameter in model.parameters())
-        policy = {
-            "policy": "from_scratch_all_parameters_trainable",
-            "frozen_parameter_count": 0,
-            "trained_parameter_count": total,
-            "total_parameter_count": total,
-        }
+        policy["classification_head"] = "one-logit abnormal head"
     else:
         raise ValueError(f"Unknown architecture {architecture!r}")
     model.to(device)
@@ -273,6 +288,13 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
         dropout=args.dropout,
         inception_channels=args.inception_channels,
         inception_depth=args.inception_depth,
+        resnet_base_channels=args.resnet_base_channels,
+        resnet_blocks=args.resnet_blocks,
+        transformer_patch_size=args.transformer_patch_size,
+        transformer_embed_dim=args.transformer_embed_dim,
+        transformer_heads=args.transformer_heads,
+        transformer_layers=args.transformer_layers,
+        transformer_feedforward_dim=args.transformer_feedforward_dim,
     )
     train_loader = _loader(
         train_data,
@@ -316,6 +338,7 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
         "source_dataset": source_dataset,
         "task": "normal_vs_abnormal",
         "binary_definition_version": BINARY_DEFINITION_VERSION,
+        "binary_implementation_version": BINARY_IMPLEMENTATION_VERSION,
         "device": str(device),
         "mixed_precision": use_amp,
         "determinism_note": (
@@ -334,6 +357,13 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
         "dropout": args.dropout,
         "inception_channels": args.inception_channels,
         "inception_depth": args.inception_depth,
+        "resnet_base_channels": args.resnet_base_channels,
+        "resnet_blocks": list(args.resnet_blocks),
+        "transformer_patch_size": args.transformer_patch_size,
+        "transformer_embed_dim": args.transformer_embed_dim,
+        "transformer_heads": args.transformer_heads,
+        "transformer_layers": args.transformer_layers,
+        "transformer_feedforward_dim": args.transformer_feedforward_dim,
         "pretrained_checkpoint": str(args.pretrained_checkpoint or ""),
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -351,6 +381,7 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
         "architecture": args.architecture,
         "dataset": source_dataset,
         "task": "normal_vs_abnormal",
+        "binary_implementation_version": BINARY_IMPLEMENTATION_VERSION,
         "seed": args.seed,
         "smoke_test": bool(args.smoke_test),
     }
@@ -377,7 +408,12 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
         )
     elif args.resume and best_path.is_file():
         state = torch.load(best_path, map_location=device, weights_only=False)
-        if state.get("architecture") != args.architecture or state.get("source_dataset") != source_dataset:
+        if (
+            state.get("architecture") != args.architecture
+            or state.get("source_dataset") != source_dataset
+            or state.get("binary_implementation_version")
+            != BINARY_IMPLEMENTATION_VERSION
+        ):
             raise RuntimeError(f"Refusing incompatible best checkpoint: {best_path}")
         model.load_state_dict(state["model_state_dict"])
         if state.get("optimizer_state_dict"):
@@ -464,6 +500,7 @@ def run_training(args: argparse.Namespace) -> dict[str, Any]:
                     "architecture": args.architecture,
                     "source_dataset": source_dataset,
                     "binary_definition_version": BINARY_DEFINITION_VERSION,
+                    "binary_implementation_version": BINARY_IMPLEMENTATION_VERSION,
                     "model_state_dict": model.state_dict(),
                     "run_config": config,
                     "parameter_policy": policy,
@@ -540,6 +577,11 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
     architecture = str(checkpoint.get("architecture", ""))
     if architecture not in ARCHITECTURES:
         raise ValueError(f"Checkpoint has unsupported architecture {architecture!r}")
+    if checkpoint.get("binary_implementation_version") != BINARY_IMPLEMENTATION_VERSION:
+        raise ValueError(
+            "Checkpoint predates the four-architecture binary implementation; "
+            "retrain it instead of mixing incompatible ablation runs"
+        )
     config = checkpoint.get("run_config", {})
     model, _ = build_model(
         architecture,
@@ -548,6 +590,27 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         dropout=float(config.get("dropout", args.dropout)),
         inception_channels=int(config.get("inception_channels", args.inception_channels)),
         inception_depth=int(config.get("inception_depth", args.inception_depth)),
+        resnet_base_channels=int(
+            config.get("resnet_base_channels", args.resnet_base_channels)
+        ),
+        resnet_blocks=tuple(config.get("resnet_blocks", args.resnet_blocks)),
+        transformer_patch_size=int(
+            config.get("transformer_patch_size", args.transformer_patch_size)
+        ),
+        transformer_embed_dim=int(
+            config.get("transformer_embed_dim", args.transformer_embed_dim)
+        ),
+        transformer_heads=int(
+            config.get("transformer_heads", args.transformer_heads)
+        ),
+        transformer_layers=int(
+            config.get("transformer_layers", args.transformer_layers)
+        ),
+        transformer_feedforward_dim=int(
+            config.get(
+                "transformer_feedforward_dim", args.transformer_feedforward_dim
+            )
+        ),
     )
     model.load_state_dict(checkpoint["model_state_dict"])
     binary, _, _, test_data = _prepare_data(args)
@@ -572,6 +635,7 @@ def run_evaluation(args: argparse.Namespace) -> dict[str, Any]:
         "architecture": architecture,
         "task": "normal_vs_abnormal",
         "binary_definition_version": BINARY_DEFINITION_VERSION,
+        "binary_implementation_version": BINARY_IMPLEMENTATION_VERSION,
         "source_dataset": checkpoint["source_dataset"],
         "target_dataset": target_dataset,
         "test_record_count": len(result["record_ids"]),
@@ -603,6 +667,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--inception-channels", type=int, default=32)
     parser.add_argument("--inception-depth", type=int, default=6)
+    parser.add_argument("--resnet-base-channels", type=int, default=32)
+    parser.add_argument("--resnet-blocks", type=int, nargs="+", default=[2, 2, 2, 2])
+    parser.add_argument("--transformer-patch-size", type=int, default=50)
+    parser.add_argument("--transformer-embed-dim", type=int, default=128)
+    parser.add_argument("--transformer-heads", type=int, default=4)
+    parser.add_argument("--transformer-layers", type=int, default=4)
+    parser.add_argument("--transformer-feedforward-dim", type=int, default=256)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--max-records-per-split", type=int)
     parser.add_argument("--smoke-test", action="store_true")

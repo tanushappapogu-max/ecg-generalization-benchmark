@@ -1,0 +1,5 @@
+architecture,five_label_cells,expected_cells,matrix_complete,bootstrap_ci_available
+inception_time,25,25,True,True
+resnet1d,0,25,False,False
+transformer,25,25,True,True
+ecg_fm,25,25,True,True

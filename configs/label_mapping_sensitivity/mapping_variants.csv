@@ -1,0 +1,16 @@
+mapping_variant,target_label,decision,implementation_requirement,rationale
+consensus_v1,normal,Sinus-rhythm proxy retained; abnormal labels may co-occur with normal,Use the existing frozen canonical manifests,Reproduces the submitted benchmark mapping
+consensus_v1,af_afl,Merge atrial fibrillation and atrial flutter,Use existing direct and merged native-code rules,Preserves the shared class available across datasets
+consensus_v1,av_block_1,First-degree AV block only; isolated prolonged PR excluded,Use existing direct native-code rules,Precision-first baseline
+consensus_v1,lbbb,Complete LBBB only,Use existing direct native-code rules,Precision-first baseline
+consensus_v1,rbbb,Complete RBBB only,Use existing direct native-code rules,Precision-first baseline
+strict_normal_v1,normal,Require explicit normal ECG and clear normal when any benchmark abnormality is present,Rebuild from native normal-ECG labels or validated report rules,Tests whether sinus rhythm was an overly broad proxy for normality
+strict_normal_v1,af_afl,Same as consensus_v1,No change,Isolates the normal-label decision
+strict_normal_v1,av_block_1,Same as consensus_v1,No change,Isolates the normal-label decision
+strict_normal_v1,lbbb,Same as consensus_v1,No change,Isolates the normal-label decision
+strict_normal_v1,rbbb,Same as consensus_v1,No change,Isolates the normal-label decision
+broad_conduction_v1,normal,Same as consensus_v1,No change,Isolates conduction-label breadth
+broad_conduction_v1,af_afl,Same as consensus_v1,No change,Isolates conduction-label breadth
+broad_conduction_v1,av_block_1,Include isolated prolonged PR where explicitly coded,Requires source-native codes including PTB-XL LPR and corresponding SNOMED concepts,Tests the largest documented first-degree AV-block ambiguity
+broad_conduction_v1,lbbb,Include incomplete LBBB where explicitly coded,Requires source-native incomplete-LBBB codes,Tests complete-only versus broad bundle-branch definitions
+broad_conduction_v1,rbbb,Include incomplete RBBB where explicitly coded,Requires source-native IRBBB codes including SNOMED 713426002,Tests complete-only versus broad bundle-branch definitions

@@ -1,0 +1,25 @@
+{
+  "status": "COMPLETE",
+  "analysis_type": "posthoc_mapping_sensitivity_no_retraining",
+  "architectures": [
+    "ecg_fm",
+    "inception_time",
+    "resnet1d",
+    "transformer"
+  ],
+  "datasets": [
+    "ptbxl",
+    "cpsc2018",
+    "georgia",
+    "mimic_iv",
+    "code_ii"
+  ],
+  "mapping_variants": [
+    "consensus_five_class",
+    "exclusive_normal_five_class",
+    "abnormal_only_four_class",
+    "merged_bbb_four_class"
+  ],
+  "completed_cells_per_variant": 100,
+  "warning": "Fixed saved predictions were rescored. No model was retrained, and source-native diagnoses excluded by the original mapping cannot be recovered."
+}

@@ -1,0 +1,26 @@
+{
+  "status": "COMPLETE",
+  "analysis_type": "posthoc_label_collapse_no_retraining",
+  "architectures": [
+    "ecg_fm",
+    "inception_time",
+    "resnet1d",
+    "transformer"
+  ],
+  "datasets": [
+    "ptbxl",
+    "cpsc2018",
+    "georgia",
+    "mimic_iv",
+    "code_ii"
+  ],
+  "aggregations": [
+    "max_abnormal",
+    "noisy_or",
+    "one_minus_normal"
+  ],
+  "completed_cells_per_aggregation": 100,
+  "primary_aggregation": "max_abnormal",
+  "warning": "This is not a retrained binary classifier experiment.",
+  "bootstrap_unit": "paired source-target cells; descriptive, not independent training replicates"
+}

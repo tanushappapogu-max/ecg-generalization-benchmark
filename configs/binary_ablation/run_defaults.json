@@ -6,7 +6,9 @@
   "all_zero_rule": "excluded",
   "architectures": [
     "ecg_fm",
-    "inception_time"
+    "inception_time",
+    "resnet1d",
+    "transformer"
   ],
   "seed": 42,
   "epochs": 50,
@@ -24,5 +26,24 @@
     "weight_decay": 0.0001,
     "module_channels": 32,
     "depth": 6
+  },
+  "resnet1d": {
+    "batch_size": 32,
+    "gradient_accumulation_steps": 1,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "base_channels": 32,
+    "blocks_per_stage": [2, 2, 2, 2]
+  },
+  "transformer": {
+    "batch_size": 32,
+    "gradient_accumulation_steps": 1,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "patch_size": 50,
+    "embed_dim": 128,
+    "heads": 4,
+    "layers": 4,
+    "feedforward_dim": 256
   }
 }
