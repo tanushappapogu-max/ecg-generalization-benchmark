@@ -1,0 +1,26 @@
+{
+  "status": "PARTIAL_PI_REVISION",
+  "completed_from_saved_artifacts": {
+    "normal_abnormal_directional_cells": 80,
+    "normal_abnormal_directional_pairs": 20,
+    "mimic_ecg_fm_source_cells": 5,
+    "label_prevalence_datasets": 5,
+    "acquisition_metadata_datasets": 5
+  },
+  "directional_binary_finding": {
+    "cells_with_reduced_gap": 47,
+    "cells_with_increased_gap": 33,
+    "pairs_with_reduced_mean_gap": 10,
+    "pairs_with_increased_mean_gap": 10
+  },
+  "not_completed_by_this_script": [
+    "cross-dataset waveform duplicate and near-duplicate removal audit",
+    "second non-overlapping foundation-model training and 5x5 evaluation",
+    "native-label remapping experiment that recovers diagnoses excluded before training"
+  ],
+  "warnings": [
+    "Normal-versus-abnormal results collapse fixed saved predictions; no model was retrained.",
+    "Available hardware metadata are incomplete for MIMIC-IV-ECG, CPSC2018, and Georgia.",
+    "The existing endpoint-mapping analysis cannot recover source-native diagnoses excluded before training."
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "candidate_records": 60000,
+  "selected_records": 50000,
+  "selected_patients": 46497,
+  "patient_leakage_count": 0,
+  "split_counts": {
+    "test": 5000,
+    "train": 40000,
+    "validation": 5000
+  },
+  "label_counts": {
+    "normal": 19128,
+    "af_afl": 1026,
+    "av_block_1": 841,
+    "lbbb": 843,
+    "rbbb": 1366
+  },
+  "candidate_prevalence": {
+    "normal": 0.38255,
+    "af_afl": 0.020516666666666666,
+    "av_block_1": 0.016816666666666667,
+    "lbbb": 0.016866666666666665,
+    "rbbb": 0.027316666666666666
+  },
+  "selected_prevalence": {
+    "normal": 0.38256,
+    "af_afl": 0.02052,
+    "av_block_1": 0.01682,
+    "lbbb": 0.01686,
+    "rbbb": 0.02732
+  },
+  "max_absolute_prevalence_difference": 1.0000000000010001e-05,
+  "all_zero_five_label_records": 27222,
+  "mapping_version": "code15-five-label-normal-af-1davb-lbbb-rbbb-v1",
+  "split_version": "code15-patient-aware-multilabel-80-10-10-seed42",
+  "selection_version": "code15-60k-to-50k-record-multilabel-seed42",
+  "seed": 42
+}
